@@ -10,7 +10,7 @@ export default function QuizPage({ userId, topic, onExit }) {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   
-  // 💡 NEW state for feedback
+  // Feedback state
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState(null);
@@ -65,19 +65,67 @@ export default function QuizPage({ userId, topic, onExit }) {
 
     } catch (err) {
       console.error("Failed to submit answer:", err);
-      setIsAnswered(false); // Re-enable if there was an error
+      setIsAnswered(false);
     }
   }
 
-  if (loading && !question) return <p>Loading quiz...</p>;
+  if (loading && !question) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p className="loading-text">Generating your personalized quiz...</p>
+        <div className="loading-dots">
+          <div className="loading-dot"></div>
+          <div className="loading-dot"></div>
+          <div className="loading-dot"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (completed) {
-    // Pass the question history to the result page
     return <ResultPage progress={progress} questionHistory={progress.question_history} onRestart={onExit} />;
   }
 
   return (
-    <div className="p-6">
+    <div className="quiz-container">
+      {/* Header */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '30px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(10px)',
+        padding: '15px 20px',
+        borderRadius: '15px',
+        border: '1px solid rgba(255, 255, 255, 0.2)'
+      }}>
+        <button
+          onClick={onExit}
+          className="btn btn-secondary"
+          style={{ 
+            background: 'rgba(255, 255, 255, 0.2)',
+            border: 'none',
+            color: 'white',
+            padding: '10px 20px'
+          }}
+        >
+          ← Back to Setup
+        </button>
+        <div style={{ 
+          background: 'rgba(78, 205, 196, 0.2)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          fontSize: '0.9rem',
+          fontWeight: '600'
+        }}>
+          📚 {topic}
+        </div>
+      </div>
+
+      {/* Question Card */}
       {question && (
         <QuestionCard 
           question={question} 
@@ -88,26 +136,79 @@ export default function QuizPage({ userId, topic, onExit }) {
         />
       )}
 
-      {isAnswered && (
-        <div className="mt-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 rounded">
-          <p dangerouslySetInnerHTML={{ __html: explanation }}></p>
+      {/* Explanation */}
+      {isAnswered && explanation && (
+        <div className={`feedback-card ${
+          selectedAnswer === correctAnswerIndex ? 'feedback-success' : 'feedback-error'
+        }`}>
+          <div className="feedback-content">
+            <div className={`feedback-icon ${
+              selectedAnswer === correctAnswerIndex ? 'feedback-success' : 'feedback-error'
+            }`}>
+              {selectedAnswer === correctAnswerIndex ? '✓' : 'i'}
+            </div>
+            <div style={{ flex: 1 }}>
+              <p dangerouslySetInnerHTML={{ __html: explanation }}></p>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Progress Card */}
       {progress && (
-        <div className="mt-6 bg-gray-100 p-4 rounded">
-          <p><strong>Score:</strong> {Math.round(progress.score)}</p>
-          <p><strong>Answered:</strong> {progress.answered} / 5</p>
-          <p><strong>Level:</strong> {progress.level}</p>
+        <div className="progress-card">
+          <div className="progress-header" style={{ justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Your Progress</h3>
+            <div className="progress-score">
+              {Math.round(progress.score)}
+            </div>
+          </div>
+          
+          <div className="progress-stats">
+            <div className="stat-item">
+              <div className="stat-value">{progress.answered}</div>
+              <div className="stat-label">Questions</div>
+            </div>
+            <div className="stat-item">
+              <div className={`stat-value ${
+                progress.level === 'easy' ? 'easy' :
+                progress.level === 'medium' ? 'medium' : 'hard'
+              }`} style={{ 
+                background: 'rgba(255, 255, 255, 0.2)',
+                padding: '8px 12px',
+                borderRadius: '20px',
+                fontSize: '1rem'
+              }}>
+                {progress.level}
+              </div>
+              <div className="stat-label">Level</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-value">{5 - progress.answered}</div>
+              <div className="stat-label">Remaining</div>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="progress-bar-container">
+            <div 
+              className="progress-bar"
+              style={{ width: `${(progress.answered / 5) * 100}%` }}
+            ></div>
+          </div>
         </div>
       )}
 
-      <button
-        onClick={() => setCompleted(true)}
-        className="mt-6 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-      >
-        End Quiz & Show Results
-      </button>
+      {/* End Quiz Button */}
+      <div style={{ textAlign: 'center', marginTop: '30px' }}>
+        <button
+          onClick={() => setCompleted(true)}
+          className="btn btn-secondary"
+          style={{ background: '#6c757d' }}
+        >
+          End Quiz & Show Results
+        </button>
+      </div>
     </div>
   );
 }
