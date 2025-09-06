@@ -11,28 +11,23 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-#static fallback q-
+# --- Static fallback questions (unchanged) ---
 static_questions = {
     "easy": [
         {"text": "What is 2 + 2?", "options": ["2", "3", "4", "5"], "correct_index": 2},
-        {"text": "Which planet is known as the Red Planet?",
-         "options": ["Earth", "Mars", "Venus", "Jupiter"], "correct_index": 1}
+        {"text": "Which planet is known as the Red Planet?", "options": ["Earth", "Mars", "Venus", "Jupiter"], "correct_index": 1}
     ],
     "medium": [
-        {"text": "What is the square root of 81?",
-         "options": ["7", "8", "9", "10"], "correct_index": 2},
-        {"text": "In Python, what does len([10,20,30]) return?",
-         "options": ["2", "3", "30", "Error"], "correct_index": 1}
+        {"text": "What is the square root of 81?", "options": ["7", "8", "9", "10"], "correct_index": 2},
+        {"text": "In Python, what does len([10,20,30]) return?", "options": ["2", "3", "30", "Error"], "correct_index": 1}
     ],
     "hard": [
-        {"text": "What is the time complexity of binary search?",
-         "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"], "correct_index": 1},
-        {"text": "Which algorithm is used in PageRank?",
-         "options": ["K-means", "Gradient Descent", "Markov Chain", "Dijkstra"], "correct_index": 2}
+        {"text": "What is the time complexity of binary search?", "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"], "correct_index": 1},
+        {"text": "Which algorithm is used in PageRank?", "options": ["K-means", "Gradient Descent", "Markov Chain", "Dijkstra"], "correct_index": 2}
     ]
 }
 
-#fastapi setup
+# --- FastAPI Setup (unchanged) ---
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -42,14 +37,12 @@ app.add_middleware(
 
 sessions = {}
 
-#helpers
+# --- Helper Functions (unchanged) ---
 def _clean_choice(s: str) -> str:
     if not isinstance(s, str):
         s = str(s)
     s = s.strip()
-    # remove leading labels like "A) ", "B. ", "1) "
     s = re.sub(r"^\s*([A-Da-d1-4])[\.\)]\s*", "", s)
-    # collapse spaces
     s = re.sub(r"\s+", " ", s)
     return s.strip()
 
@@ -69,11 +62,7 @@ def _fallback(level="easy"):
     q["difficulty"] = level
     return q
 
-# --------------------------
-# Question generator (Ollama)
-# We ask for: text + correct_answer + 3 distractors,
-# then we build options and compute correct_index ourselves.
-# --------------------------
+# --- 💡 NEW: Enhanced Question Generator ---
 def generate_question(level="easy", topic="math"):
     prompt = f"""
 You are a quiz generator. Create ONE {level} difficulty multiple-choice question on the topic "{topic}".
@@ -85,14 +74,19 @@ Return STRICT JSON ONLY (no markdown, no prose). Use exactly these keys:
   "distractors": ["wrong but plausible", "wrong but plausible", "wrong but plausible"]
 }}
 
-Rules:
-- The JSON must be a single object (not inside code fences).
-- No labels like "A)" inside answers.
-- Answers must be concise, same style as the question requires.
-- Distractors must be clearly incorrect but plausible.
-- Do NOT include any extra keys.
-"""
+Here is an example of the format I want:
+{{
+  "text": "What is the capital of France?",
+  "correct_answer": "Paris",
+  "distractors": ["London", "Berlin", "Rome"]
+}}
 
+Rules:
+- The JSON must be a single object.
+- No labels like "A)" inside answers.
+- Answers must be concise.
+- Distractors must be clearly incorrect but plausible.
+"""
     try:
         response = ollama.chat(
             model="mistral",
@@ -104,29 +98,24 @@ Rules:
         raw = response["message"]["content"].strip()
         logging.info(f"Ollama raw: {raw}")
 
-        # extract JSON object if any extra text sneaks in
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if m:
             raw = m.group(0)
 
         data = json.loads(raw)
-
         text = data.get("text", "").strip()
         correct = _clean_choice(data.get("correct_answer", ""))
         distractors = data.get("distractors", [])
 
-        if not text or not correct or not isinstance(distractors, list):
-            raise ValueError("Missing fields in model output")
+        if not text or not correct or not isinstance(distractors, list) or len(distractors) < 3:
+            raise ValueError("Missing or invalid fields in model output")
 
-        # clean + build options
         distractors = [_clean_choice(d) for d in distractors if d]
         options = _normalize_unique([correct] + distractors)
 
-        # ensure 4 options; if fewer, fail to fallback for reliability
         if len(options) < 4:
             raise ValueError("Not enough unique options from model")
 
-        # only first 4 to keep consistent UI
         options = options[:4]
         random.shuffle(options)
         correct_index = options.index(correct)
@@ -138,12 +127,28 @@ Rules:
             "correct_index": correct_index,
             "difficulty": level
         }
-
     except Exception as e:
         logging.error(f"⚠️ Ollama failed or invalid JSON: {e}")
         return _fallback(level)
 
-#basemodels requsts
+#explaination gen
+def generate_explanation(question_text, correct_answer):
+    prompt = f"""
+    Explain concisely why "{correct_answer}" is the correct answer for the question: "{question_text}"
+    Be helpful and encouraging.
+    """
+    try:
+        response = ollama.chat(
+            model="mistral",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response["message"]["content"]
+    except Exception as e:
+        logging.error(f"⚠️ Ollama explanation failed: {e}")
+        return f"The correct answer is {correct_answer}."
+
+
+# --- Pydantic Models (unchanged) ---
 class StartRequest(BaseModel):
     user_id: str
     topic: str
@@ -154,24 +159,28 @@ class AnswerRequest(BaseModel):
     time_taken: float
     question_id: str | None = None
 
-#endpoints
+# --- Endpoints ---
 @app.post("/start")
 def start_quiz(req: StartRequest):
     session_id = f"sess_{int(time.time())}"
     first_q = generate_question(level="easy", topic=req.topic)
-
+    
+    # 💡 NEW: Keep track of all questions for the final report
     sessions[session_id] = {
+        "user_id": req.user_id,
         "score": 0,
         "answered": 0,
         "level": "easy",
         "last_question": first_q,
-        "topic": req.topic
+        "topic": req.topic,
+        "question_history": [] # To store questions for the results page
     }
     return {"session_id": session_id, "question": first_q, "progress": sessions[session_id]}
 
 @app.get("/")
 def welcome():
     return {"message": "Welcome to the Quiz API!"}
+
 
 @app.post("/answer")
 def submit_answer(req: AnswerRequest):
@@ -181,36 +190,60 @@ def submit_answer(req: AnswerRequest):
 
     last_q = session.get("last_question")
     correct = False
-    if last_q is not None:
-        try:
-            # checkingindex within bounds
-            if 0 <= req.answer_index < len(last_q["options"]):
-                correct = (req.answer_index == last_q["correct_index"])
-        except Exception:
-            correct = False
+    if last_q and 0 <= req.answer_index < len(last_q["options"]):
+        correct = (req.answer_index == last_q["correct_index"])
+    
+    # 💡 NEW: Add the answered question to history for the results page
+    session["question_history"].append({
+        "text": last_q["text"],
+        "options": last_q["options"],
+        "correct_index": last_q["correct_index"],
+        "user_answer_index": req.answer_index,
+        "is_correct": correct
+    })
+
+    # --- 💡 NEW: Dynamic Difficulty and Scoring ---
+    current_level = session["level"]
+    explanation = ""
 
     if correct:
-        session["score"] += 1
-        explanation = "Correct ✅"
+        # Increase score, with bonus for speed on harder questions
+        score_increase = 1
+        if current_level == "hard" and req.time_taken < 5:
+            score_increase = 2
+        elif current_level == "medium" and req.time_taken < 8:
+            score_increase = 1.5
+        
+        session["score"] += score_increase
+        
+        # Determine next difficulty level
+        if current_level == "easy":
+            next_level = "medium"
+        else:
+            next_level = "hard"
+        
+        explanation = "Correct! ✅ Let's try something tougher."
     else:
-        explanation = f"Incorrect ❌"
+        # Determine next difficulty level
+        if current_level == "hard":
+            next_level = "medium"
+        else:
+            next_level = "easy"
+        
+        correct_answer_text = last_q["options"][last_q["correct_index"]]
+        ai_explanation = generate_explanation(last_q["text"], correct_answer_text)
+        explanation = f"Not quite. The correct answer was **{correct_answer_text}**. Here's why: {ai_explanation}"
 
+    session["level"] = next_level
     session["answered"] += 1
-
-    # difficulty thresholds
-    if session["score"] >= 4:
-        session["level"] = "hard"
-    elif session["score"] >= 2:
-        session["level"] = "medium"
-    else:
-        session["level"] = "easy"
-
+    
     next_q = generate_question(level=session["level"], topic=session.get("topic", "math"))
     session["last_question"] = next_q
 
     return {
         "correct": correct,
         "explanation": explanation,
+        "correct_index": last_q["correct_index"],
         "next_question": next_q,
         "progress": session
     }

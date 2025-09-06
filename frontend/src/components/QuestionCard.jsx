@@ -1,7 +1,20 @@
 import React from "react";
 
-export default function QuestionCard({ question, onAnswer }) {
+export default function QuestionCard({ question, onAnswer, selectedAnswer, correctAnswerIndex, isAnswered }) {
   if (!question) return null;
+
+  const getButtonClass = (idx) => {
+    if (!isAnswered) {
+      return "bg-blue-500 hover:bg-blue-600";
+    }
+    if (idx === correctAnswerIndex) {
+      return "bg-green-500"; 
+    }
+    if (idx === selectedAnswer) {
+      return "bg-red-500"; 
+    }
+    return "bg-gray-400"; 
+  };
 
   return (
     <div className="p-4 border rounded-lg shadow">
@@ -10,8 +23,9 @@ export default function QuestionCard({ question, onAnswer }) {
         {question.options.map((opt, idx) => (
           <button
             key={idx}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className={`px-4 py-2 text-white rounded ${getButtonClass(idx)} disabled:opacity-75`}
             onClick={() => onAnswer(idx)}
+            disabled={isAnswered}
           >
             {opt}
           </button>
