@@ -1,36 +1,81 @@
 # backend/prompts.py
 
 def get_question_prompt(level: str, topic: str) -> str:
+    """
+    Creates a detailed few-shot prompt for GPT-2 to generate a multiple-choice question.
+    By providing high-quality examples, we guide the model to produce a response
+    in the desired JSON format and style.
+    """
     return f"""
-You are an expert quiz question writer. Create ONE multiple-choice question on the topic of "{topic}" with a "{level}" difficulty.
+Generate a single, unique, multiple-choice question in valid JSON format based on the provided topic and difficulty.
 
-Return STRICT JSON ONLY. Use exactly these keys:
+---
+[EXAMPLE 1]
+Topic: "Basic Arithmetic"
+Difficulty: "easy"
+Output:
 {{
-  "text": "The question text.",
-  "skill": "A specific skill or sub-topic, e.g., 'Calculus: Derivatives' or 'Python: List Comprehensions'.",
-  "correct_answer": "The single correct answer text.",
-  "distractors": ["A plausible but wrong answer.", "Another plausible but wrong answer.", "A third plausible but wrong answer."]
+  "text": "What is the result of 7 multiplied by 6?",
+  "skill": "Multiplication",
+  "correct_answer": "42",
+  "distractors": ["35", "48", "54"]
 }}
+---
+[EXAMPLE 2]
+Topic: "Web Development"
+Difficulty: "medium"
+Output:
+{{
+  "text": "In CSS, which property is used to change the text color of an element?",
+  "skill": "CSS Fundamentals",
+  "correct_answer": "color",
+  "distractors": ["font-color", "text-color", "font-style"]
+}}
+---
+[EXAMPLE 3]
+Topic: "Biology"
+Difficulty: "hard"
+Output:
+{{
+  "text": "What is the primary function of mitochondria in a eukaryotic cell?",
+  "skill": "Cellular Biology",
+  "correct_answer": "ATP synthesis through cellular respiration",
+  "distractors": ["Protein synthesis", "Waste breakdown and recycling", "Storing genetic information"]
+}}
+---
+[TASK]
+Topic: "{topic}"
+Difficulty: "{level}"
+Output:
+"""
 
-Rules:
-- The JSON response must be a single, complete object.
-- Answers and distractors should be concise strings.
-- Distractors must be clearly incorrect but relevant to the question's topic.
+def get_learning_content_prompt(question_text: str, correct_answer: str) -> str:
+    """
+    Creates a detailed few-shot prompt for GPT-2 to generate a micro-learning explanation.
+    The examples guide the model to produce a concise, helpful, and encouraging tone.
+    """
+    return f"""
+You are an AI assistant that provides simple, encouraging, and concise explanations for quiz questions. Below are examples.
+
+---
+[EXAMPLE 1]
+Question: "What is the capital of Japan?"
+Correct Answer: "Tokyo"
+Explanation:
+Let's review this! The correct answer is **Tokyo**. Tokyo has been the imperial capital of Japan since 1868 and is the most populous city in the country, serving as its political and economic center.
+---
+[EXAMPLE 2]
+Question: "What is the time complexity of a bubble sort algorithm?"
+Correct Answer: "O(n^2)"
+Explanation:
+Let's break this down. The correct answer is **O(n²)**. This is because, in the worst-case scenario, the algorithm needs to compare and potentially swap every element with every other element in the list, resulting in a quadratic time complexity.
+---
+[TASK]
+Question: "{question_text}"
+Correct Answer: "{correct_answer}"
+Explanation:
 """
 
 def get_explanation_prompt(question_text: str, correct_answer: str) -> str:
-    return f"""
-    Explain concisely why "{correct_answer}" is the correct answer for the question: "{question_text}"
-    Be helpful, encouraging, and focus on the core concept.
-    """
-
-def get_learning_content_prompt(question_text: str, correct_answer: str) -> str:
-    return f"""
-    A learner just answered a question incorrectly.
-    Question: "{question_text}"
-    Correct answer: "{correct_answer}"
-
-    Provide a concise, bite-sized "micro-learning" explanation of the core concept.
-    Keep it simple and encouraging. Start with a phrase like "Let's take a closer look at this concept."
-    Return a single paragraph of plain text.
-    """
+    # This can now be an alias for the more detailed learning content prompt
+    return get_learning_content_prompt(question_text, correct_answer)

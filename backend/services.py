@@ -1,5 +1,4 @@
 # backend/services.py
-import ollama
 import uuid
 import random
 import re
@@ -7,12 +6,20 @@ import json
 import logging
 import time
 from typing import Dict
+from transformers import pipeline
 
 from models import Session, Question, Progress, StartRequest, AnswerRequest, NextStep,AnswerResponse
 import prompts
 import database
 
 logging.basicConfig(level=logging.INFO)
+
+# Initialize the Hugging Face pipeline for text generation with GPT-2
+try:
+    generator = pipeline("text-generation", model="gpt2")
+except Exception as e:
+    logging.error(f"Failed to load Hugging Face model: {e}")
+    generator = None
 
 # --- (Helper functions remain the same) ---
 def _clean_choice(s: str) -> str:
@@ -33,16 +40,18 @@ def _normalize_unique(options: list) -> list:
 # --- AI Interaction Service ---
 
 def _generate_ai_question(level: str, topic: str) -> Question:
-    # This function remains unchanged
+    if not generator:
+        logging.error("Generator pipeline not available. Using fallback question.")
+        return Question(id=str(uuid.uuid4()), text=f"What is a key concept in {topic}?", options=["A", "B", "C", "D"], correct_index=0, difficulty=level, skill=topic)
+
     prompt_text = prompts.get_question_prompt(level, topic)
     try:
-        response = ollama.chat(model="mistral", messages=[
-            {"role": "system", "content": "You are a helpful assistant that only returns valid JSON."},
-            {"role": "user", "content": prompt_text}
-        ], options={"temperature": 0.8})
+        full_output = generator(prompt_text, max_length=250, num_return_sequences=1, pad_token_id=generator.tokenizer.eos_token_id)[0]['generated_text']
+        raw_completion = full_output[len(prompt_text):].strip()
         
-        raw_content = response["message"]["content"]
-        json_match = re.search(r"\{.*\}", raw_content, re.DOTALL)
+        logging.info(f"GPT-2 raw completion for question: {raw_completion}")
+        
+        json_match = re.search(r"\{.*\}", raw_completion, re.DOTALL)
         if not json_match: raise ValueError("No JSON object found in response")
         
         data = json.loads(json_match.group(0))
@@ -74,18 +83,28 @@ def _generate_ai_question(level: str, topic: str) -> Question:
         return Question(id=str(uuid.uuid4()), text=f"What is a key concept in {topic}?", options=["A", "B", "C", "D"], correct_index=0, difficulty=level, skill=topic)
 
 
-# *** NEW FUNCTION TO FIX THE BUG ***
 def _generate_learning_content(question_text: str, correct_answer: str) -> str:
     """Generates a micro-learning explanation using the AI."""
+    if not generator:
+        logging.error("Generator pipeline not available. Using fallback explanation.")
+        return f"Let's review this concept. The correct answer to '{question_text}' is **{correct_answer}**."
+
     prompt_text = prompts.get_learning_content_prompt(question_text, correct_answer)
     try:
-        response = ollama.chat(
-            model="mistral",
-            messages=[{"role": "user", "content": prompt_text}]
-        )
-        return response["message"]["content"]
+        max_len = len(prompt_text.split(' ')) + 100
+        full_output = generator(prompt_text, max_length=max_len, num_return_sequences=1, pad_token_id=generator.tokenizer.eos_token_id)[0]['generated_text']
+        explanation = full_output[len(prompt_text):].strip()
+        explanation = explanation.split("\n\n")[0]
+        
+        logging.info(f"GPT-2 raw completion for content: {explanation}")
+        
+        if len(explanation.split()) < 5:
+            raise ValueError("Generated explanation is too short.")
+
+        return "Let's take a closer look at this. " + correct_answer + " is the correct answer because" + explanation
+
     except Exception as e:
-        logging.error(f"⚠️ Ollama content generation failed: {e}")
+        logging.error(f"⚠️ GPT-2 content generation failed: {e}")
         return f"Let's review this concept. The correct answer to '{question_text}' is **{correct_answer}**."
 
 
@@ -152,8 +171,6 @@ def process_user_answer(req: AnswerRequest) -> tuple[Session, AnswerResponse]:
         explanation = f"Not quite. The correct answer was **{correct_answer_text}**."
         
         if session.progress.competence_map[skill] < 0.5:
-             # *** BUG FIX IS HERE ***
-             # Call the new function to get the AI's response, not the prompt.
              learning_content = _generate_learning_content(last_q.text, correct_answer_text)
              next_question = _generate_ai_question(level=next_level, topic=session.topic)
              content_data = {
@@ -171,8 +188,6 @@ def process_user_answer(req: AnswerRequest) -> tuple[Session, AnswerResponse]:
     session.progress.answered += 1
     session.question_history.append({**last_q.model_dump(), "user_answer_index": req.answer_index, "is_correct": is_correct})
     
-    # *** FIX IS HERE ***
-    # Sync the session's full history into the progress object before sending
     session.progress.question_history = session.question_history
 
     database.save_session(session)
@@ -182,7 +197,7 @@ def process_user_answer(req: AnswerRequest) -> tuple[Session, AnswerResponse]:
         explanation=explanation,
         correct_index=last_q.correct_index,
         next_step=next_step,
-        progress=session.progress # This now contains the full history
+        progress=session.progress
     )
 
     return session, response
