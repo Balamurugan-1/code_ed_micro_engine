@@ -19,15 +19,13 @@ export default function App() {
     <div className="app-container">
       {!started ? (
         <div className="start-screen">
-          {/* Header */}
           <div className="app-title">
             <h1>🧠 AI Quiz Engine</h1>
             <p>Personalized micro-learning that adapts to your progress</p>
           </div>
 
-          {/* Main Card */}
+      
           <div className="card">
-            {/* User ID Input */}
             <div className="form-group">
               <label className="form-label">👤 Your Learning ID</label>
               <input
@@ -39,7 +37,7 @@ export default function App() {
               />
             </div>
 
-            {/* Topic Selection */}
+  
             <div className="form-group">
               <label className="form-label">🎯 Choose Your Learning Topic</label>
               <div className="topic-grid">
@@ -56,7 +54,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Custom Topic Input */}
+       
             <div className="form-group">
               <label className="form-label">✏️ Or enter a custom topic</label>
               <input
@@ -68,7 +66,6 @@ export default function App() {
               />
             </div>
 
-            {/* Start Button */}
             <button
               onClick={() => setStarted(true)}
               disabled={!userId.trim() || !topic.trim()}
@@ -79,7 +76,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Features */}
+      
           <div className="features-grid">
             <div className="feature-card">
               <span className="feature-icon">🎯</span>

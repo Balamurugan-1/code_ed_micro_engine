@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import QuestionCard from "./QuestionCard";
+import ContentCard from "./ContentCard";
 import ResultPage from "./ResultPage";
 import { startQuiz, submitAnswer } from "../api";
 
@@ -9,14 +10,24 @@ export default function QuizPage({ userId, topic, onExit }) {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [learningContent, setLearningContent] = useState(null); 
+
   
-  // Feedback state
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState(null);
   const [explanation, setExplanation] = useState("");
 
+
+  const initialized = useRef(false);
+
   useEffect(() => {
+
+    if (initialized.current) {
+      return;
+    }
+    initialized.current = true;
+
     async function initQuiz() {
       setLoading(true);
       try {
@@ -29,6 +40,7 @@ export default function QuizPage({ userId, topic, onExit }) {
       }
       setLoading(false);
     }
+
     initQuiz();
   }, [userId, topic]);
 
@@ -49,25 +61,45 @@ export default function QuizPage({ userId, topic, onExit }) {
       setExplanation(data.explanation);
       setProgress(data.progress);
 
-      // Wait 3 seconds to show feedback before loading the next question
+      
       setTimeout(() => {
         if (data.progress.answered >= 5) {
           setCompleted(true);
         } else {
-          setQuestion(data.next_question);
-          // Reset feedback state for the new question
-          setIsAnswered(false);
-          setSelectedAnswer(null);
-          setCorrectAnswerIndex(null);
-          setExplanation("");
+         
+          if (data.next_step && data.next_step.type === 'content') {
+            setLearningContent(data.next_step.data);
+            setQuestion(null); 
+          } else {
+            setQuestion(data.next_step.data); 
+          
+            setIsAnswered(false);
+            setSelectedAnswer(null);
+            setCorrectAnswerIndex(null);
+            setExplanation("");
+          }
         }
       }, 3000); 
 
     } catch (err) {
       console.error("Failed to submit answer:", err);
-      setIsAnswered(false);
+     
+      setIsAnswered(false); 
+      setSelectedAnswer(null);
     }
   }
+
+ 
+  function handleProceedFromContent() {
+    setQuestion(learningContent.next_question);
+    setLearningContent(null);
+  
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+    setCorrectAnswerIndex(null);
+    setExplanation("");
+  }
+
 
   if (loading && !question) {
     return (
@@ -125,7 +157,7 @@ export default function QuizPage({ userId, topic, onExit }) {
         </div>
       </div>
 
-      {/* Question Card */}
+ 
       {question && (
         <QuestionCard 
           question={question} 
@@ -135,9 +167,15 @@ export default function QuizPage({ userId, topic, onExit }) {
           correctAnswerIndex={correctAnswerIndex}
         />
       )}
+      {learningContent && (
+        <ContentCard
+          content={learningContent}
+          onProceed={handleProceedFromContent}
+        />
+      )}
 
-      {/* Explanation */}
-      {isAnswered && explanation && (
+
+      {isAnswered && explanation && !learningContent && (
         <div className={`feedback-card ${
           selectedAnswer === correctAnswerIndex ? 'feedback-success' : 'feedback-error'
         }`}>
@@ -154,7 +192,7 @@ export default function QuizPage({ userId, topic, onExit }) {
         </div>
       )}
 
-      {/* Progress Card */}
+
       {progress && (
         <div className="progress-card">
           <div className="progress-header" style={{ justifyContent: 'space-between' }}>
@@ -189,7 +227,6 @@ export default function QuizPage({ userId, topic, onExit }) {
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div className="progress-bar-container">
             <div 
               className="progress-bar"
@@ -199,7 +236,7 @@ export default function QuizPage({ userId, topic, onExit }) {
         </div>
       )}
 
-      {/* End Quiz Button */}
+
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
         <button
           onClick={() => setCompleted(true)}

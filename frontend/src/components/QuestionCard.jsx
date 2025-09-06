@@ -4,16 +4,28 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
   if (!question) return null;
 
   const getOptionClass = (idx) => {
+
     if (!isAnswered) {
       return "option-button";
     }
-    if (idx === correctAnswerIndex) {
-      return "option-button option-correct";
+
+    
+    if (correctAnswerIndex !== null) {
+      if (idx === correctAnswerIndex) {
+        return "option-button option-correct";
+      }
+      if (idx === selectedAnswer && idx !== correctAnswerIndex) {
+        return "option-button option-incorrect";
+      }
+      return "option-button option-neutral";
     }
-    if (idx === selectedAnswer && idx !== correctAnswerIndex) {
-      return "option-button option-incorrect";
+
+
+    if (idx === selectedAnswer) {
+      return "option-button option-neutral";
     }
-    return "option-button option-neutral";
+
+    return "option-button";
   };
 
   const getDifficultyClass = (difficulty) => {
@@ -26,7 +38,10 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
   };
 
   const getResultIcon = () => {
-    if (!isAnswered) return null;
+
+    if (!isAnswered || correctAnswerIndex === null) {
+      return null;
+    }
     if (selectedAnswer === correctAnswerIndex) {
       return <span style={{ color: '#28a745', fontSize: '1.2rem', fontWeight: 'bold' }}>✅ Correct!</span>;
     }
@@ -35,7 +50,7 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
 
   return (
     <div className="card question-card">
-      {/* Question Header */}
+
       <div className="question-header">
         <div className="question-info">
           <div className="question-icon">?</div>
@@ -46,12 +61,12 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
         {getResultIcon()}
       </div>
 
-      {/* Question Text */}
+  
       <div className="question-text">
         {question.text}
       </div>
 
-      {/* Answer Options */}
+     
       <div className="options-container">
         {question.options.map((opt, idx) => (
           <button
@@ -64,17 +79,17 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
               {String.fromCharCode(65 + idx)}
             </span>
             <span style={{ flex: 1 }}>{opt}</span>
-            {isAnswered && idx === correctAnswerIndex && (
+            {isAnswered && correctAnswerIndex !== null && idx === correctAnswerIndex && (
               <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓</span>
             )}
-            {isAnswered && idx === selectedAnswer && idx !== correctAnswerIndex && (
+            {isAnswered && correctAnswerIndex !== null && idx === selectedAnswer && idx !== correctAnswerIndex && (
               <span style={{ color: '#dc3545', fontWeight: 'bold' }}>✗</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Loading State */}
+
       {isAnswered && (
         <div style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>
           <div className="loading-dots">

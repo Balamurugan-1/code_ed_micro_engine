@@ -11,6 +11,27 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+def generate_learning_content(question_text, correct_answer):
+    prompt = f"""
+    The user just answered a question incorrectly.
+    Question: "{question_text}"
+    The correct answer was: "{correct_answer}"
+
+    Provide a concise, bite-sized "micro-learning" explanation of the core concept.
+    Keep it simple and encouraging. Start with a phrase like "Let's review this concept."
+    Return a single paragraph of plain text.
+    """
+    try:
+        response = ollama.chat(
+            model="mistral",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response["message"]["content"]
+    except Exception as e:
+        logging.error(f"⚠️ Ollama content generation failed: {e}")
+        return f"Let's review this. The correct answer to '{question_text}' is {correct_answer}."
+    
+
 # --- Static fallback questions (unchanged) ---
 static_questions = {
     "easy": [
@@ -207,47 +228,46 @@ def submit_answer(req: AnswerRequest):
     explanation = ""
 
     if correct:
-        # Increase score, with bonus for speed on harder questions
-        score_increase = 1
-        if current_level == "hard" and req.time_taken < 5:
-            score_increase = 2
-        elif current_level == "medium" and req.time_taken < 8:
-            score_increase = 1.5
-        
-        session["score"] += score_increase
-        
-        # Determine next difficulty level
-        if current_level == "easy":
-            next_level = "medium"
-        else:
-            next_level = "hard"
+        session["score"] += 1 # Simplified scoring for now
+        next_level = "medium" if session["level"] == "easy" else "hard"
+        session["level"] = next_level
         
         explanation = "Correct! ✅ Let's try something tougher."
+        next_q = generate_question(level=session["level"], topic=session.get("topic", "math"))
+        session["last_question"] = next_q
+        next_step = {"type": "question", "data": next_q}
+
     else:
-        # Determine next difficulty level
-        if current_level == "hard":
-            next_level = "medium"
-        else:
-            next_level = "easy"
+        # User got it wrong, provide a learning moment
+        next_level = "medium" if session["level"] == "hard" else "easy"
+        session["level"] = next_level
         
         correct_answer_text = last_q["options"][last_q["correct_index"]]
-        ai_explanation = generate_explanation(last_q["text"], correct_answer_text)
-        explanation = f"Not quite. The correct answer was **{correct_answer_text}**. Here's why: {ai_explanation}"
+        learning_content = generate_learning_content(last_q["text"], correct_answer_text)
+        
+        # The next question will be based on the new, easier level
+        next_q = generate_question(level=session["level"], topic=session.get("topic", "math"))
+        session["last_question"] = next_q
+        
+        next_step = {
+            "type": "content", 
+            "data": {
+                "title": "Let's Review!",
+                "content": learning_content,
+                "next_question": next_q
+            }
+        }
+        explanation = f"Not quite. The correct answer was **{correct_answer_text}**."
 
-    session["level"] = next_level
     session["answered"] += 1
-    
-    next_q = generate_question(level=session["level"], topic=session.get("topic", "math"))
-    session["last_question"] = next_q
 
     return {
         "correct": correct,
         "explanation": explanation,
         "correct_index": last_q["correct_index"],
-        "next_question": next_q,
+        "next_step": next_step, # Return next_step instead of next_question
         "progress": session
     }
-
 @app.get("/progress/{session_id}")
 def get_progress(session_id: str):
     return sessions.get(session_id, {"error": "session not found"})
