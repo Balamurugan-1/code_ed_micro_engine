@@ -7,6 +7,7 @@ from typing import List, Dict, Any
 class StartRequest(BaseModel):
     user_id: str
     topic: str
+    course: str
 
 class AnswerRequest(BaseModel):
     session_id: str
@@ -26,6 +27,7 @@ class Progress(BaseModel):
     answered: int
     level: str
     competence_map: Dict[str, float] # New competence model
+    question_history: List[Dict] = []
 
 class NextStep(BaseModel):
     type: str  # "question" or "content"
@@ -38,19 +40,13 @@ class AnswerResponse(BaseModel):
     next_step: NextStep
     progress: Progress
 
-class Progress(BaseModel):
-    score: float
-    answered: int
-    level: str
-    competence_map: Dict[str, float]
-    question_history: List[Dict] = []
-
 # --- Internal Session Model ---
 
 class Session(BaseModel):
     session_id: str
     user_id: str
     topic: str
+    course: str
     progress: Progress
     question_history: List[Dict] = []
     last_question: Question | None = None

@@ -4,15 +4,15 @@ import "./index.css";
 
 export default function App() {
   const [started, setStarted] = useState(false);
-  const [userId, setUserId] = useState("user123");
-  const [topic, setTopic] = useState("math");
+  const [userId, setUserId] = useState("student123");
+  const [course, setCourse] = useState("Introduction to Python Programming");
+  const [topic, setTopic] = useState("Data Structures");
 
-  const topics = [
-    { value: "math", label: "Mathematics", icon: "📊" },
-    { value: "science", label: "Science", icon: "🧬" },
-    { value: "history", label: "History", icon: "📚" },
-    { value: "programming", label: "Programming", icon: "💻" },
-    { value: "geography", label: "Geography", icon: "🌍" },
+  const courses = [
+    { value: "Introduction to Python Programming", label: "Intro to Python", icon: "🐍" },
+    { value: "Linear Algebra", label: "Linear Algebra", icon: "📐" },
+    { value: "Organic Chemistry", label: "Organic Chemistry", icon: "🧪" },
+    { value: "World History: 1500-Present", label: "World History", icon: "📜" },
   ];
 
   return (
@@ -20,14 +20,13 @@ export default function App() {
       {!started ? (
         <div className="start-screen">
           <div className="app-title">
-            <h1>🧠 AI Quiz Engine</h1>
-            <p>Personalized micro-learning that adapts to your progress</p>
+            <h1>🎓 AI Learning Engine</h1>
+            <p>Personalized micro-learning for higher education</p>
           </div>
 
-      
           <div className="card">
             <div className="form-group">
-              <label className="form-label">👤 Your Learning ID</label>
+              <label className="form-label">👤 Student ID</label>
               <input
                 type="text"
                 className="form-input"
@@ -37,30 +36,28 @@ export default function App() {
               />
             </div>
 
-  
             <div className="form-group">
-              <label className="form-label">🎯 Choose Your Learning Topic</label>
+              <label className="form-label">📚 Choose Your Course</label>
               <div className="topic-grid">
-                {topics.map((topicOption) => (
+                {courses.map((courseOption) => (
                   <div
-                    key={topicOption.value}
-                    className={`topic-card ${topic === topicOption.value ? 'selected' : ''}`}
-                    onClick={() => setTopic(topicOption.value)}
+                    key={courseOption.value}
+                    className={`topic-card ${course === courseOption.value ? 'selected' : ''}`}
+                    onClick={() => setCourse(courseOption.value)}
                   >
-                    <span className="topic-icon">{topicOption.icon}</span>
-                    <div className="topic-label">{topicOption.label}</div>
+                    <span className="topic-icon">{courseOption.icon}</span>
+                    <div className="topic-label">{courseOption.label}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-       
             <div className="form-group">
-              <label className="form-label">✏️ Or enter a custom topic</label>
+              <label className="form-label">🎯 Enter a Specific Topic</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g., JavaScript, Biology, World War II"
+                placeholder="e.g., Data Structures, Matrix Operations"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
               />
@@ -68,15 +65,14 @@ export default function App() {
 
             <button
               onClick={() => setStarted(true)}
-              disabled={!userId.trim() || !topic.trim()}
+              disabled={!userId.trim() || !course.trim() || !topic.trim()}
               className="btn btn-primary btn-full"
               style={{ fontSize: '1.1rem', padding: '18px 30px' }}
             >
-              🚀 Start Your Adaptive Quiz Journey
+              🚀 Begin Learning Session
             </button>
           </div>
 
-      
           <div className="features-grid">
             <div className="feature-card">
               <span className="feature-icon">🎯</span>
@@ -90,7 +86,7 @@ export default function App() {
             </div>
             <div className="feature-card">
               <span className="feature-icon">📈</span>
-              <div className="feature-title">Progress Tracking</div>
+              <div className="feature-title">Competency Tracking</div>
               <div className="feature-desc">See your improvement over time</div>
             </div>
           </div>
@@ -98,6 +94,7 @@ export default function App() {
       ) : (
         <QuizPage
           userId={userId}
+          course={course}
           topic={topic}
           onExit={() => setStarted(false)}
         />

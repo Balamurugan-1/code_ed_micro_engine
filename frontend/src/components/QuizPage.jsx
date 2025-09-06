@@ -4,7 +4,7 @@ import ContentCard from "./ContentCard";
 import ResultPage from "./ResultPage";
 import { startQuiz, submitAnswer } from "../api";
 
-export default function QuizPage({ userId, topic, onExit }) {
+export default function QuizPage({ userId, course, topic, onExit }) {
   const [sessionId, setSessionId] = useState(null);
   const [question, setQuestion] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -31,7 +31,7 @@ export default function QuizPage({ userId, topic, onExit }) {
     async function initQuiz() {
       setLoading(true);
       try {
-        const data = await startQuiz(userId, topic);
+        const data = await startQuiz(userId, course, topic);
         setSessionId(data.session_id);
         setQuestion(data.question);
         setProgress(data.progress);
@@ -42,7 +42,7 @@ export default function QuizPage({ userId, topic, onExit }) {
     }
 
     initQuiz();
-  }, [userId, topic]);
+  }, [userId, course, topic]);
 
   async function handleAnswer(idx) {
     setIsAnswered(true);

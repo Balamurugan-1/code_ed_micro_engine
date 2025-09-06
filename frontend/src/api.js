@@ -1,10 +1,11 @@
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000"; // backend pot
+const API_URL = "http://127.0.0.1:8000"; // backend port
 
-export async function startQuiz(userId, topic) {
+export async function startQuiz(userId, course, topic) {
   const res = await axios.post(`${API_URL}/start`, {
     user_id: userId,
+    course: course,
     topic: topic,
   });
   return res.data;
