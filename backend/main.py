@@ -23,7 +23,7 @@ def generate_learning_content(question_text, correct_answer):
     """
     try:
         response = ollama.chat(
-            model="mistral",
+            model="llama3.2:3b",
             messages=[{"role": "user", "content": prompt}]
         )
         return response["message"]["content"]
