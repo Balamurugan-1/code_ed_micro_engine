@@ -5,14 +5,16 @@ import "./index.css";
 export default function App() {
   const [started, setStarted] = useState(false);
   const [userId, setUserId] = useState("student123");
-  const [course, setCourse] = useState("Introduction to Python Programming");
-  const [topic, setTopic] = useState("Data Structures");
+  const [course, setCourse] = useState("Mathematics"); // Default to Mathematics
+  const [topic, setTopic] = useState("Calculus"); // Default topic
 
   const courses = [
-    { value: "Introduction to Python Programming", label: "Intro to Python", icon: "🐍" },
-    { value: "Linear Algebra", label: "Linear Algebra", icon: "📐" },
-    { value: "Organic Chemistry", label: "Organic Chemistry", icon: "🧪" },
-    { value: "World History: 1500-Present", label: "World History", icon: "📜" },
+    { value: "Mathematics", label: "Mathematics", icon: "📐" },
+    { value: "Physics", label: "Physics", icon: "⚛️" },
+    { value: "Chemistry", label: "Chemistry", icon: "🧪" },
+    { value: "Biology", label: "Biology", icon: "🧬" },
+    { value: "Computer Science", label: "Computer Science", icon: "💻" },
+    { value: "English", label: "English", icon: "📚" },
   ];
 
   return (
@@ -57,7 +59,7 @@ export default function App() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g., Data Structures, Matrix Operations"
+                placeholder="e.g., Calculus, Kinematics, Organic Reactions"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
               />

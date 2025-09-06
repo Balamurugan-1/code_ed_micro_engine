@@ -1,15 +1,13 @@
 import React from "react";
+import Latex from "react-latex-next";
 
 export default function QuestionCard({ question, onAnswer, selectedAnswer, correctAnswerIndex, isAnswered }) {
   if (!question) return null;
 
   const getOptionClass = (idx) => {
-
     if (!isAnswered) {
       return "option-button";
     }
-
-    
     if (correctAnswerIndex !== null) {
       if (idx === correctAnswerIndex) {
         return "option-button option-correct";
@@ -19,12 +17,9 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
       }
       return "option-button option-neutral";
     }
-
-
     if (idx === selectedAnswer) {
       return "option-button option-neutral";
     }
-
     return "option-button";
   };
 
@@ -38,7 +33,6 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
   };
 
   const getResultIcon = () => {
-
     if (!isAnswered || correctAnswerIndex === null) {
       return null;
     }
@@ -50,7 +44,6 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
 
   return (
     <div className="card question-card">
-
       <div className="question-header">
         <div className="question-info">
           <div className="question-icon">?</div>
@@ -60,13 +53,11 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
         </div>
         {getResultIcon()}
       </div>
-
   
       <div className="question-text">
-        {question.text}
+        <Latex>{question.text}</Latex>
       </div>
 
-     
       <div className="options-container">
         {question.options.map((opt, idx) => (
           <button
@@ -78,7 +69,7 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
             <span className="option-letter">
               {String.fromCharCode(65 + idx)}
             </span>
-            <span style={{ flex: 1 }}>{opt}</span>
+            <span style={{ flex: 1, textAlign: 'left' }}><Latex>{opt}</Latex></span>
             {isAnswered && correctAnswerIndex !== null && idx === correctAnswerIndex && (
               <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓</span>
             )}
@@ -88,7 +79,6 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
           </button>
         ))}
       </div>
-
 
       {isAnswered && (
         <div style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>

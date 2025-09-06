@@ -1,4 +1,5 @@
 import React from "react";
+import Latex from "react-latex-next";
 
 export default function ResultPage({ progress, questionHistory, onRestart }) {
   const decodeHTML = (html) => {
@@ -77,7 +78,7 @@ export default function ResultPage({ progress, questionHistory, onRestart }) {
             return (
               <div key={skill} style={{ marginBottom: '15px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
-                  <span style={{ fontWeight: '600' }}>{skill}</span>
+                  <span style={{ fontWeight: '600' }}><Latex>{skill}</Latex></span>
                   <span style={{ color: '#555' }}>{data.correct}/{data.total} ({skillAccuracy}%)</span>
                 </div>
                 <div className="progress-bar-container" style={{ height: '8px', background: 'rgba(0,0,0,0.05)' }}>
@@ -97,11 +98,11 @@ export default function ResultPage({ progress, questionHistory, onRestart }) {
         <div className="review-content">
           {questionHistory && questionHistory.map((q, index) => (
             <div key={index} className={`review-item ${q.is_correct ? 'review-correct' : 'review-incorrect'}`}>
-              <p className="review-question">{index + 1}. {decodeHTML(q.text)}</p>
+              <div className="review-question"><Latex>{`${index + 1}. ${decodeHTML(q.text)}`}</Latex></div>
               <div className="review-answers">
-                <div className="review-answer">Your answer: <strong>{decodeHTML(q.options[q.user_answer_index])}</strong> {q.is_correct ? '✓' : '✗'}</div>
+                <div className="review-answer">Your answer: <strong><Latex>{decodeHTML(q.options[q.user_answer_index])}</Latex></strong> {q.is_correct ? '✓' : '✗'}</div>
                 {!q.is_correct && (
-                  <div className="review-answer">Correct answer: <strong>{decodeHTML(q.options[q.correct_index])}</strong></div>
+                  <div className="review-answer">Correct answer: <strong><Latex>{decodeHTML(q.options[q.correct_index])}</Latex></strong></div>
                 )}
               </div>
             </div>
