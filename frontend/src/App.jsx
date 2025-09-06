@@ -5,8 +5,9 @@ import "./index.css";
 export default function App() {
   const [started, setStarted] = useState(false);
   const [userId, setUserId] = useState("student123");
-  const [course, setCourse] = useState("Mathematics"); // Default to Mathematics
-  const [topic, setTopic] = useState("Calculus"); // Default topic
+  const [course, setCourse] = useState("Mathematics");
+  const [topic, setTopic] = useState("Calculus");
+  const [numQuestions, setNumQuestions] = useState(5); // State for number of questions
 
   const courses = [
     { value: "Mathematics", label: "Mathematics", icon: "📐" },
@@ -27,6 +28,7 @@ export default function App() {
           </div>
 
           <div className="card">
+            {/* Student ID Input */}
             <div className="form-group">
               <label className="form-label">👤 Student ID</label>
               <input
@@ -38,6 +40,7 @@ export default function App() {
               />
             </div>
 
+            {/* Course Selection */}
             <div className="form-group">
               <label className="form-label">📚 Choose Your Course</label>
               <div className="topic-grid">
@@ -54,27 +57,43 @@ export default function App() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">🎯 Enter a Specific Topic</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g., Calculus, Kinematics, Organic Reactions"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              />
+            {/* Topic and Number of Questions Inputs */}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' }}>
+              <div className="form-group">
+                <label className="form-label">🎯 Enter a Specific Topic</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g., Calculus, Kinematics"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">#️⃣ Questions</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={numQuestions}
+                  onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value, 10)) || 1)}
+                  min="1"
+                  max="20"
+                />
+              </div>
             </div>
 
+            {/* Start Button */}
             <button
               onClick={() => setStarted(true)}
-              disabled={!userId.trim() || !course.trim() || !topic.trim()}
+              disabled={!userId.trim() || !course.trim() || !topic.trim() || !numQuestions}
               className="btn btn-primary btn-full"
-              style={{ fontSize: '1.1rem', padding: '18px 30px' }}
+              style={{ fontSize: '1.1rem', padding: '18px 30px', marginTop: '10px' }}
             >
               🚀 Begin Learning Session
             </button>
           </div>
 
+          {/* Features Grid */}
           <div className="features-grid">
             <div className="feature-card">
               <span className="feature-icon">🎯</span>
@@ -98,9 +117,11 @@ export default function App() {
           userId={userId}
           course={course}
           topic={topic}
+          numQuestions={numQuestions}
           onExit={() => setStarted(false)}
         />
       )}
     </div>
   );
 }
+

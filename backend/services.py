@@ -8,7 +8,6 @@ import logging
 import time
 from typing import Dict
 
-# NEW: Import and load the .env file
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -102,13 +101,20 @@ def _generate_learning_content(question_text: str, correct_answer: str) -> str:
 
 def create_new_session(req: StartRequest) -> Session:
     session_id = f"sess_{int(time.time())}_{uuid.uuid4().hex[:6]}"
-    initial_progress = Progress(score=0, answered=0, level="easy", competence_map={})
+    initial_progress = Progress(
+        score=0, 
+        answered=0, 
+        level="easy", 
+        competence_map={},
+        total_questions=req.num_questions
+    )
     
     session = Session(
         session_id=session_id,
         user_id=req.user_id,
         topic=req.topic,
         course=req.course,
+        total_questions=req.num_questions,
         progress=initial_progress,
         question_history=[]
     )
@@ -146,7 +152,6 @@ def process_user_answer(req: AnswerRequest) -> tuple[Session, AnswerResponse]:
         else: next_level = 'hard'
     session.progress.level = next_level
     
-    # --- Next Step Logic ---
     next_step: NextStep
     explanation: str
 

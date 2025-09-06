@@ -5,6 +5,8 @@ def get_question_prompt(level: str, topic: str, course: str) -> str:
 You are an expert question writer for higher education. Your output MUST BE a single, valid JSON object and nothing else.
 Do not wrap the JSON in markdown backticks or any other text.
 
+IMPORTANT: All backslashes (\\) in the JSON string values MUST be escaped. For example, instead of "\\frac", you MUST write "\\\\frac". This is critical for JSON compatibility.
+
 Create ONE multiple-choice question for a university-level course.
 
 - Course: "{course}"
@@ -13,14 +15,15 @@ Create ONE multiple-choice question for a university-level course.
 
 Use this exact JSON structure:
 {{
-  "text": "The question text. Use LaTeX for equations, e.g., 'What is the value of $$\\int x^2 dx$$?'",
+  "text": "The question text. Use LaTeX for equations, ensuring all backslashes are escaped. Example: 'What is the value of $$\\int x^2 dx$$?'",
   "skill": "A specific skill or sub-topic, e.g., 'Calculus: Integration'.",
-  "correct_answer": "The single correct answer. Use LaTeX if needed, e.g., '$$\\frac{{x^3}}{3} + C$$'.",
-  "distractors": ["A plausible but wrong answer.", "Another plausible but wrong answer.", "A third plausible but wrong answer."]
+  "correct_answer": "The single correct answer. Use LaTeX if needed, ensuring all backslashes are escaped. Example: '$$\\\\frac{{x^3}}{3} + C$$'.",
+  "distractors": ["A plausible but wrong answer with escaped backslashes.", "Another plausible but wrong answer with escaped backslashes.", "A third plausible but wrong answer with escaped backslashes."]
 }}
 
 Rules:
 - ALL mathematical and scientific notation (formulas, variables, symbols) MUST be enclosed in LaTeX delimiters ('$' for inline, '$$' for block).
+- All backslashes inside the JSON strings must be escaped (e.g., `\\\\frac`, `\\\\alpha`).
 - The JSON response must be a single, complete object.
 - Answers and distractors should be concise strings.
 - Distractors must be clearly incorrect but relevant to the question's topic and course level.
@@ -46,3 +49,4 @@ def get_learning_content_prompt(question_text: str, correct_answer: str) -> str:
     For example: 'The integral of $x^2$ is found using the power rule, which gives $$\\frac{{x^3}}{3} + C$$.'
     Return a single paragraph of plain text with embedded LaTeX.
     """
+
