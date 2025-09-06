@@ -11,9 +11,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# --------------------------
-# Static fallback questions
-# --------------------------
+#static fallback q-
 static_questions = {
     "easy": [
         {"text": "What is 2 + 2?", "options": ["2", "3", "4", "5"], "correct_index": 2},
@@ -34,9 +32,7 @@ static_questions = {
     ]
 }
 
-# --------------------------
-# FastAPI setup
-# --------------------------
+#fastapi setup
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -46,9 +42,7 @@ app.add_middleware(
 
 sessions = {}
 
-# --------------------------
-# Helpers
-# --------------------------
+#helpers
 def _clean_choice(s: str) -> str:
     if not isinstance(s, str):
         s = str(s)
@@ -110,7 +104,7 @@ Rules:
         raw = response["message"]["content"].strip()
         logging.info(f"Ollama raw: {raw}")
 
-        # Extract JSON object if any extra text sneaks in
+        # extract JSON object if any extra text sneaks in
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if m:
             raw = m.group(0)
@@ -124,7 +118,7 @@ Rules:
         if not text or not correct or not isinstance(distractors, list):
             raise ValueError("Missing fields in model output")
 
-        # Clean + build options
+        # clean + build options
         distractors = [_clean_choice(d) for d in distractors if d]
         options = _normalize_unique([correct] + distractors)
 
@@ -149,9 +143,7 @@ Rules:
         logging.error(f"⚠️ Ollama failed or invalid JSON: {e}")
         return _fallback(level)
 
-# --------------------------
-# Request Models
-# --------------------------
+#basemodels requsts
 class StartRequest(BaseModel):
     user_id: str
     topic: str
@@ -162,9 +154,7 @@ class AnswerRequest(BaseModel):
     time_taken: float
     question_id: str | None = None
 
-# --------------------------
-# Endpoints
-# --------------------------
+#endpoints
 @app.post("/start")
 def start_quiz(req: StartRequest):
     session_id = f"sess_{int(time.time())}"
@@ -193,7 +183,7 @@ def submit_answer(req: AnswerRequest):
     correct = False
     if last_q is not None:
         try:
-            # Ensure index within bounds
+            # checkingindex within bounds
             if 0 <= req.answer_index < len(last_q["options"]):
                 correct = (req.answer_index == last_q["correct_index"])
         except Exception:
@@ -207,7 +197,7 @@ def submit_answer(req: AnswerRequest):
 
     session["answered"] += 1
 
-    # Adaptive difficulty thresholds
+    # difficulty thresholds
     if session["score"] >= 4:
         session["level"] = "hard"
     elif session["score"] >= 2:

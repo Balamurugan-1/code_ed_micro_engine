@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000";
-
-
+const API_URL = "http://127.0.0.1:8000"; // backend pot
 
 export async function startQuiz(userId, topic) {
   const res = await axios.post(`${API_URL}/start`, {
@@ -12,17 +10,12 @@ export async function startQuiz(userId, topic) {
   return res.data;
 }
 
-export async function submitAnswer(sessionId, questionId, answerIndex, timeTaken) {
+export async function submitAnswer(sessionId, answerIndex, timeTaken, questionId) {
   const res = await axios.post(`${API_URL}/answer`, {
     session_id: sessionId,
-    question_id: questionId,
     answer_index: answerIndex,
     time_taken: timeTaken,
+    question_id: questionId,
   });
-  return res.data;
-}
-
-export async function getProgress(sessionId) {
-  const res = await axios.get(`${API_URL}/progress/${sessionId}`);
   return res.data;
 }
