@@ -36,7 +36,6 @@ def initialize_db():
         """)
         conn.commit()
 
-# --- User Management ---
 def create_user(user: User):
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
@@ -56,7 +55,7 @@ def get_user(user_id: str) -> User | None:
             return User(**row)
     return None
 
-# --- Active Session Management ---
+
 def save_session(session: Session):
     session_data = session.model_dump_json()
     with sqlite3.connect(DB_FILE) as conn:
@@ -82,7 +81,7 @@ def delete_session(session_id: str):
         cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
         conn.commit()
 
-# --- Quiz History Management ---
+
 def save_quiz_history(history: QuizHistory):
     history_data = history.model_dump_json()
     with sqlite3.connect(DB_FILE) as conn:

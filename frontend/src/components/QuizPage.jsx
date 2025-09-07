@@ -121,7 +121,6 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
 
   return (
     <div className="quiz-container">
-      {/* Header */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
