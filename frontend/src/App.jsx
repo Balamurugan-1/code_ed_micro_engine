@@ -1,107 +1,53 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import LoginPage from "./components/LoginPage";
+import DashboardPage from "./components/DashboardPage";
 import QuizPage from "./components/QuizPage";
+import HistoryDetail from "./components/HistoryDetail";
 import "./index.css";
 
-export default function App() {
-  const [started, setStarted] = useState(false);
-  const [userId, setUserId] = useState("user123");
-  const [topic, setTopic] = useState("math");
+// A simple router
+const App = () => {
+  const [route, setRoute] = useState({ name: 'login' });
+  const [currentUser, setCurrentUser] = useState(null);
 
-  const topics = [
-    { value: "math", label: "Mathematics", icon: "📊" },
-    { value: "science", label: "Science", icon: "🧬" },
-    { value: "history", label: "History", icon: "📚" },
-    { value: "programming", label: "Programming", icon: "💻" },
-    { value: "geography", label: "Geography", icon: "🌍" },
-  ];
+  useEffect(() => {
+    // Check if user is logged in from a previous session
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      setCurrentUser(storedUser);
+      setRoute({ name: 'dashboard' });
+    }
+  }, []);
 
-  return (
-    <div className="app-container">
-      {!started ? (
-        <div className="start-screen">
-          <div className="app-title">
-            <h1>🧠 AI Quiz Engine</h1>
-            <p>Personalized micro-learning that adapts to your progress</p>
-          </div>
+  const handleLogin = (userId) => {
+    setCurrentUser(userId);
+    localStorage.setItem('currentUser', userId);
+    setRoute({ name: 'dashboard' });
+  };
 
-      
-          <div className="card">
-            <div className="form-group">
-              <label className="form-label">👤 Your Learning ID</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Enter your unique user ID"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-              />
-            </div>
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    setRoute({ name: 'login' });
+  };
 
-  
-            <div className="form-group">
-              <label className="form-label">🎯 Choose Your Learning Topic</label>
-              <div className="topic-grid">
-                {topics.map((topicOption) => (
-                  <div
-                    key={topicOption.value}
-                    className={`topic-card ${topic === topicOption.value ? 'selected' : ''}`}
-                    onClick={() => setTopic(topicOption.value)}
-                  >
-                    <span className="topic-icon">{topicOption.icon}</span>
-                    <div className="topic-label">{topicOption.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+  const renderContent = () => {
+    switch (route.name) {
+      case 'login':
+        return <LoginPage onLogin={handleLogin} />;
+      case 'dashboard':
+        return <DashboardPage userId={currentUser} onStartQuiz={(config) => setRoute({ name: 'quiz', ...config })} onViewHistory={(history) => setRoute({ name: 'history', history })} onLogout={handleLogout} />;
+      case 'quiz':
+        return <QuizPage userId={currentUser} course={route.course} topic={route.topic} numQuestions={route.numQuestions} onExit={() => setRoute({ name: 'dashboard' })} />;
+      case 'history':
+        return <HistoryDetail history={route.history} onBack={() => setRoute({ name: 'dashboard' })} />;
+      default:
+        return <LoginPage onLogin={handleLogin} />;
+    }
+  };
 
-       
-            <div className="form-group">
-              <label className="form-label">✏️ Or enter a custom topic</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g., JavaScript, Biology, World War II"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              />
-            </div>
+  return <div className="app-container">{renderContent()}</div>;
+};
 
-            <button
-              onClick={() => setStarted(true)}
-              disabled={!userId.trim() || !topic.trim()}
-              className="btn btn-primary btn-full"
-              style={{ fontSize: '1.1rem', padding: '18px 30px' }}
-            >
-              🚀 Start Your Adaptive Quiz Journey
-            </button>
-          </div>
+export default App;
 
-      
-          <div className="features-grid">
-            <div className="feature-card">
-              <span className="feature-icon">🎯</span>
-              <div className="feature-title">Adaptive Difficulty</div>
-              <div className="feature-desc">Questions adjust to your skill level</div>
-            </div>
-            <div className="feature-card">
-              <span className="feature-icon">⚡</span>
-              <div className="feature-title">Micro-Learning</div>
-              <div className="feature-desc">Short, focused learning sessions</div>
-            </div>
-            <div className="feature-card">
-              <span className="feature-icon">📈</span>
-              <div className="feature-title">Progress Tracking</div>
-              <div className="feature-desc">See your improvement over time</div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <QuizPage
-          userId={userId}
-          topic={topic}
-          onExit={() => setStarted(false)}
-        />
-      )}
-    </div>
-  );
-}

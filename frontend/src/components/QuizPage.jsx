@@ -4,7 +4,7 @@ import ContentCard from "./ContentCard";
 import ResultPage from "./ResultPage";
 import { startQuiz, submitAnswer } from "../api";
 
-export default function QuizPage({ userId, topic, onExit }) {
+export default function QuizPage({ userId, course, topic, numQuestions, onExit }) {
   const [sessionId, setSessionId] = useState(null);
   const [question, setQuestion] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -31,7 +31,7 @@ export default function QuizPage({ userId, topic, onExit }) {
     async function initQuiz() {
       setLoading(true);
       try {
-        const data = await startQuiz(userId, topic);
+        const data = await startQuiz(userId, course, topic, numQuestions);
         setSessionId(data.session_id);
         setQuestion(data.question);
         setProgress(data.progress);
@@ -42,7 +42,7 @@ export default function QuizPage({ userId, topic, onExit }) {
     }
 
     initQuiz();
-  }, [userId, topic]);
+  }, [userId, course, topic, numQuestions]);
 
   async function handleAnswer(idx) {
     setIsAnswered(true);
@@ -63,7 +63,7 @@ export default function QuizPage({ userId, topic, onExit }) {
 
       
       setTimeout(() => {
-        if (data.progress.answered >= 5) {
+        if (data.progress.answered >= numQuestions) {
           setCompleted(true);
         } else {
          
@@ -204,25 +204,23 @@ export default function QuizPage({ userId, topic, onExit }) {
           
           <div className="progress-stats">
             <div className="stat-item">
-              <div className="stat-value">{progress.answered}</div>
+              <div className="stat-value">{progress.answered} / {numQuestions}</div>
               <div className="stat-label">Questions</div>
             </div>
             <div className="stat-item">
-              <div className={`stat-value ${
-                progress.level === 'easy' ? 'easy' :
-                progress.level === 'medium' ? 'medium' : 'hard'
-              }`} style={{ 
+              <div className={`stat-value`} style={{ 
                 background: 'rgba(255, 255, 255, 0.2)',
                 padding: '8px 12px',
                 borderRadius: '20px',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                textTransform: 'capitalize'
               }}>
                 {progress.level}
               </div>
               <div className="stat-label">Level</div>
             </div>
             <div className="stat-item">
-              <div className="stat-value">{5 - progress.answered}</div>
+              <div className="stat-value">{numQuestions - progress.answered}</div>
               <div className="stat-label">Remaining</div>
             </div>
           </div>
@@ -230,7 +228,7 @@ export default function QuizPage({ userId, topic, onExit }) {
           <div className="progress-bar-container">
             <div 
               className="progress-bar"
-              style={{ width: `${(progress.answered / 5) * 100}%` }}
+              style={{ width: `${(progress.answered / numQuestions) * 100}%` }}
             ></div>
           </div>
         </div>

@@ -1,13 +1,25 @@
 import React from "react";
+import Latex from "react-latex-next";
 
-/**
- * Displays a "micro-learning" content piece before proceeding to the next question.
- * @param {object} props
- * @param {object} props.content - The content object from the API.
- * @param {function} props.onProceed - Callback function to load the next question.
- */
 export default function ContentCard({ content, onProceed }) {
   if (!content) return null;
+
+  // Simple markdown-to-HTML for bolding, preserving LaTeX
+  const renderContent = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*|\$.*?\$|\$\$.*?\$\$)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('$') && part.endsWith('$')) {
+        return <Latex key={index}>{part}</Latex>;
+      }
+       if (part.startsWith('$$') && part.endsWith('$$')) {
+        return <div key={index} className="latex-block"><Latex displayMode={true}>{part}</Latex></div>;
+      }
+      return part;
+    });
+  };
 
   return (
     <div className="card" style={{ animation: 'slideUp 0.6s ease-out', marginBottom: '30px', borderLeft: '5px solid #4ecdc4' }}>
@@ -22,13 +34,12 @@ export default function ContentCard({ content, onProceed }) {
         </div>
       </div>
       <div className="question-text" style={{ fontSize: '1.1rem', fontWeight: '400', lineHeight: '1.7' }}>
-        {/* Using dangerouslySetInnerHTML to allow for simple formatting like bolding from the AI */}
-        <p dangerouslySetInnerHTML={{ __html: content.content }}></p>
+        <p>{renderContent(content.content)}</p>
       </div>
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
         <button
           onClick={onProceed}
-          className="btn btn-success"
+          className="btn btn-primary"
         >
           Got it, Next Question →
         </button>
