@@ -4,7 +4,6 @@ import Latex from "react-latex-next";
 export default function ContentCard({ content, onProceed }) {
   if (!content) return null;
 
-  // Simple markdown-to-HTML for bolding, preserving LaTeX
   const renderContent = (text) => {
     const parts = text.split(/(\*\*.*?\*\*|\$.*?\$|\$\$.*?\$\$)/g);
     return parts.map((part, index) => {

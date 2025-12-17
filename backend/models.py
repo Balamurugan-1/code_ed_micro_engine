@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 from datetime import datetime
 
-# --- Auth Models ---
 class UserCreate(BaseModel):
     user_id: str
     password: str
@@ -15,7 +14,6 @@ class User(BaseModel):
     user_id: str
     hashed_password: str
 
-# --- API Request/Response Models ---
 class StartRequest(BaseModel):
     user_id: str
     topic: str
@@ -54,7 +52,6 @@ class AnswerResponse(BaseModel):
     next_step: NextStep
     progress: Progress
 
-# --- Internal Data Models ---
 class Session(BaseModel):
     session_id: str
     user_id: str

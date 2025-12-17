@@ -12,7 +12,7 @@ export default function HistoryDetail({ history, onBack }) {
       <ResultPage
         progress={history.progress}
         questionHistory={history.progress.question_history}
-        onRestart={onBack} // Reuse onBack for the "Try Another Topic" button
+        onRestart={onBack} 
       />
     </div>
   );

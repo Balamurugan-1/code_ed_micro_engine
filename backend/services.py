@@ -18,12 +18,11 @@ from models import Session, Question, Progress, StartRequest, AnswerRequest, Nex
 import prompts
 import database
 
-# --- Gemini API Configuration ---
 try:
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
     generation_config = GenerationConfig(response_mime_type="application/json")
-    model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
-    text_model = genai.GenerativeModel('gemini-1.5-flash') # For plain text responses
+    model = genai.GenerativeModel('gemini-2.5-flash', generation_config=generation_config)
+    text_model = genai.GenerativeModel('gemini-2.5-flash') 
 except Exception as e:
     logging.error(f"Failed to configure Gemini API: {e}")
     model = None
@@ -32,7 +31,6 @@ except Exception as e:
 
 logging.basicConfig(level=logging.INFO)
 
-# --- Helper Functions ---
 def _clean_choice(s: str) -> str:
     if not isinstance(s, str): s = str(s)
     s = s.strip()
@@ -48,7 +46,6 @@ def _normalize_unique(options: list) -> list:
             seen.add(c.lower())
     return out
 
-# --- AI Interaction Service ---
 
 def _generate_ai_question(level: str, topic: str, course: str) -> Question:
     if not model:

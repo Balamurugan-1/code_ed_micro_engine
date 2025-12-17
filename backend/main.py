@@ -57,7 +57,6 @@ def submit_answer(req: AnswerRequest):
     try:
         session, response = services.process_user_answer(req)
         
-        # if quiz is complete, save to history and delete active session
         if session.progress.answered >= session.total_questions:
             history = QuizHistory(
                 user_id=session.user_id,

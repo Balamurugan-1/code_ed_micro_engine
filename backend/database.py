@@ -1,107 +1,127 @@
 # backend/database.py
-import sqlite3
-import json
+import os
+import logging
+from dotenv import load_dotenv
+from pymongo import MongoClient, DESCENDING
+from pymongo.errors import PyMongoError
 from models import Session, User, QuizHistory
 
-DB_FILE = "quiz_sessions.db"
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+MONGO_URI = os.getenv("MONGODB_URI")
+DB_NAME = "code_ed_micro_engine"
+
+client = None
+db = None
+
+def get_db():
+    """Returns the database instance, reconnecting if necessary."""
+    global client, db
+    if client is None:
+        if not MONGO_URI:
+            logger.error("MONGODB_URI is not set in environment variables.")
+            raise ValueError("MONGODB_URI is not set.")
+        try:
+            client = MongoClient(MONGO_URI)
+            db = client[DB_NAME]
+            logger.info("Successfully connected to MongoDB.")
+        except PyMongoError as e:
+            logger.error(f"Failed to connect to MongoDB: {e}")
+            raise
+    return db
 
 def initialize_db():
-    """Creates all necessary tables if they don't exist."""
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        # Users table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                hashed_password TEXT NOT NULL
-            )
-        """)
-        # Sessions table (still used for active quizzes)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                session_id TEXT PRIMARY KEY,
-                session_data TEXT NOT NULL
-            )
-        """)
-        # Quiz History table for completed quizzes
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS quiz_history (
-                history_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                session_id TEXT NOT NULL UNIQUE,
-                history_data TEXT NOT NULL,
-                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
-            )
-        """)
-        conn.commit()
+    """Creates indexes for efficient querying."""
+    database = get_db()
+    try:
+        database.users.create_index("user_id", unique=True)
+        
+        database.sessions.create_index("session_id", unique=True)
+        
+        database.quiz_history.create_index([("user_id", 1), ("completed_at", DESCENDING)])
+        
+        logger.info("Database indexes verified.")
+    except PyMongoError as e:
+        logger.error(f"Error creating indexes: {e}")
+
 
 def create_user(user: User):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (user_id, hashed_password) VALUES (?, ?)",
-            (user.user_id, user.hashed_password)
-        )
-        conn.commit()
+    database = get_db()
+    try:
+        database.users.insert_one(user.model_dump())
+    except PyMongoError as e:
+        logger.error(f"Error creating user: {e}")
+        raise
 
 def get_user(user_id: str) -> User | None:
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        if row:
-            return User(**row)
+    database = get_db()
+    try:
+        user_doc = database.users.find_one({"user_id": user_id})
+        if user_doc:
+            return User(**user_doc)
+    except PyMongoError as e:
+        logger.error(f"Error fetching user: {e}")
     return None
 
 
 def save_session(session: Session):
-    session_data = session.model_dump_json()
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO sessions (session_id, session_data) VALUES (?, ?)",
-            (session.session_id, session_data)
+    """
+    Saves the current state of the quiz session (checkpoint).
+    Uses upsert=True to create if not exists, or replace if exists.
+    """
+    database = get_db()
+    try:
+        session_data = session.model_dump()
+        
+        database.sessions.replace_one(
+            {"session_id": session.session_id},
+            session_data,
+            upsert=True
         )
-        conn.commit()
+    except PyMongoError as e:
+        logger.error(f"Error saving session checkpoint: {e}")
+        raise
 
 def get_session(session_id: str) -> Session | None:
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT session_data FROM sessions WHERE session_id = ?", (session_id,))
-        row = cursor.fetchone()
-        if row:
-            return Session.model_validate_json(row[0])
+    database = get_db()
+    try:
+        session_doc = database.sessions.find_one({"session_id": session_id})
+        if session_doc:
+            return Session.model_validate(session_doc)
+    except PyMongoError as e:
+        logger.error(f"Error fetching session: {e}")
     return None
-    
+
 def delete_session(session_id: str):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
-        conn.commit()
+    database = get_db()
+    try:
+        database.sessions.delete_one({"session_id": session_id})
+    except PyMongoError as e:
+        logger.error(f"Error deleting session: {e}")
 
 
 def save_quiz_history(history: QuizHistory):
-    history_data = history.model_dump_json()
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO quiz_history (user_id, session_id, history_data) VALUES (?, ?, ?)",
-            (history.user_id, history.session_id, history_data)
-        )
-        conn.commit()
-        
+    database = get_db()
+    try:
+        database.quiz_history.insert_one(history.model_dump())
+    except PyMongoError as e:
+        logger.error(f"Error saving history: {e}")
+
 def get_quiz_history_for_user(user_id: str) -> list[QuizHistory]:
+    database = get_db()
     history_list = []
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT history_data FROM quiz_history WHERE user_id = ? ORDER BY completed_at DESC", (user_id,))
-        rows = cursor.fetchall()
-        for row in rows:
-            history_list.append(QuizHistory.model_validate_json(row[0]))
+    try:
+        cursor = database.quiz_history.find({"user_id": user_id}).sort("completed_at", DESCENDING)
+        for doc in cursor:
+            history_list.append(QuizHistory.model_validate(doc))
+    except PyMongoError as e:
+        logger.error(f"Error fetching history: {e}")
     return history_list
 
-
-# Initialize the database when the application starts
-initialize_db()
+try:
+    initialize_db()
+except Exception as e:
+    logger.warning(f"Database initialization deferred or failed: {e}")
