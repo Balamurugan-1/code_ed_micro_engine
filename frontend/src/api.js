@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://code-ed-micro-engine-2.onrender.com";
 
 export async function registerUser(userId, password) {
   const res = await axios.post(`${API_URL}/register`, { user_id: userId, password });
