@@ -37,6 +37,45 @@ def get_explanation_prompt(question_text: str, correct_answer: str) -> str:
     Use LaTeX for all mathematical and scientific notation, enclosing it in '$' delimiters.
     """
 
+def get_hint_prompt(question_text: str, options: list) -> str:
+    options_block = "\n".join(f"- {o}" for o in options)
+    return f"""
+    A university student is working on this multiple-choice question:
+    "{question_text}"
+
+    The available options are:
+    {options_block}
+
+    Give ONE short, encouraging hint (1-2 sentences) that nudges the student
+    toward the right reasoning WITHOUT revealing or naming the correct option.
+    Do not mention which option is correct. Focus on the underlying concept or
+    the first step they should think about.
+    Use LaTeX for any mathematical or scientific notation, enclosed in '$' delimiters.
+    Return plain text only.
+    """
+
+
+def get_session_coach_prompt(course: str, topic: str, score: int, accuracy: int, skill_summary: str) -> str:
+    return f"""
+    You are a supportive university tutor reviewing a student's completed
+    micro-learning session.
+
+    - Course: "{course}"
+    - Topic: "{topic}"
+    - Marks (accuracy): {accuracy}%
+    - Per-skill performance:
+    {skill_summary}
+
+    Write a brief, encouraging coaching note (3-4 sentences) that:
+    1. Acknowledges what the student did well.
+    2. Names their weakest skill and why it matters.
+    3. Gives 2 concrete, actionable next steps to improve.
+    Be warm and motivating, not generic. Address the student as "you".
+    Use LaTeX for any mathematical or scientific notation, enclosed in '$' delimiters.
+    Return plain text only (you may use **bold** for emphasis).
+    """
+
+
 def get_learning_content_prompt(question_text: str, correct_answer: str) -> str:
     return f"""
     A university student just answered a question incorrectly.

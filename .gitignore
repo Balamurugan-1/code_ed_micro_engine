@@ -2,3 +2,11 @@
 backend/__pycache__
 frontend/node_modules
 backend/.env
+backend/.env.example
+.env
+
+# Local SQLite databases (the app now uses Neon PostgreSQL)
+*.db
+*.sqlite3
+
+TECHNICAL.MD

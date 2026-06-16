@@ -1,90 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { getHistory } from '../api';
+import { getHistory, getAnalytics } from '../api';
+import AnalyticsPanel from './AnalyticsPanel';
+import ThemeToggle from './ThemeToggle';
+
+const COURSES = [
+  { value: 'Mathematics', label: 'Mathematics' },
+  { value: 'Physics', label: 'Physics' },
+  { value: 'Chemistry', label: 'Chemistry' },
+  { value: 'Biology', label: 'Biology' },
+  { value: 'Computer Science', label: 'Computer Science' },
+  { value: 'English', label: 'English' },
+];
 
 export default function DashboardPage({ userId, onStartQuiz, onViewHistory, onLogout }) {
   const [history, setHistory] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [course, setCourse] = useState("Mathematics");
-  const [topic, setTopic] = useState("Calculus");
+  const [course, setCourse] = useState('Mathematics');
+  const [topic, setTopic] = useState('Calculus');
   const [numQuestions, setNumQuestions] = useState(5);
 
-  const courses = [
-    { value: "Mathematics", label: "Mathematics", icon: "📐" },
-    { value: "Physics", label: "Physics", icon: "⚛️" },
-    { value: "Chemistry", label: "Chemistry", icon: "🧪" },
-    { value: "Biology", label: "Biology", icon: "🧬" },
-    { value: "Computer Science", label: "Computer Science", icon: "💻" },
-    { value: "English", label: "English", icon: "📚" },
-  ];
-
   useEffect(() => {
-    async function fetchHistory() {
+    async function fetchData() {
       try {
-        const data = await getHistory(userId);
-        setHistory(data);
+        const [hist, stats] = await Promise.all([
+          getHistory(userId),
+          getAnalytics(userId).catch(() => null),
+        ]);
+        setHistory(hist);
+        setAnalytics(stats);
       } catch (error) {
-        console.error("Failed to fetch history:", error);
+        console.error('Failed to fetch dashboard data:', error);
       }
       setLoading(false);
     }
-    fetchHistory();
+    fetchData();
   }, [userId]);
 
-  const handleStart = () => {
-    onStartQuiz({ course, topic, numQuestions });
-  };
-  
+  const handleStart = () => onStartQuiz({ course, topic, numQuestions });
+  const adjustQ = (delta) => setNumQuestions((n) => Math.min(20, Math.max(1, n + delta)));
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  const marksFor = (item) => {
+    const qh = item.progress?.question_history || [];
+    if (qh.length === 0) return 0;
+    return Math.round((qh.filter((q) => q.is_correct).length / qh.length) * 100);
+  };
+
+  const pillColor = (pct) =>
+    pct >= 75 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ color: 'white', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>Welcome, {userId}!</h1>
-        <button onClick={onLogout} className="btn btn-secondary">Logout</button>
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark">AI</div>
+          <div className="brand-name">
+            Learning Engine
+            <span>Adaptive micro-learning</span>
+          </div>
+        </div>
+        <div className="topbar-actions">
+          <ThemeToggle />
+          <div className="user-chip">
+            <div className="avatar">{userId?.[0]?.toUpperCase() || 'U'}</div>
+            <span className="uname">{userId}</span>
+          </div>
+          <button onClick={onLogout} className="btn-ghost" style={{ borderRadius: '12px', padding: '10px 16px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+            Log out
+          </button>
+        </div>
+      </header>
+
+      <div className="greeting">
+        <div className="greeting-title">{greeting}, {userId} 👋</div>
+        <div className="greeting-sub">Ready for a focused learning session?</div>
       </div>
 
-      <div className="card" style={{ marginBottom: '30px' }}>
-        <h2>Start a New Session</h2>
+      <div className="card" style={{ marginBottom: '26px' }}>
+        <div className="section-title"><span className="bar" /> Start a new session</div>
+
         <div className="form-group">
-            <label className="form-label">📚 Choose Your Course</label>
-            <select className="form-input" value={course} onChange={(e) => setCourse(e.target.value)}>
-                {courses.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
+          <label className="form-label">Course</label>
+          <select className="form-input" value={course} onChange={(e) => setCourse(e.target.value)}>
+            {COURSES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' }}>
-            <div className="form-group">
-                <label className="form-label">🎯 Enter a Specific Topic</label>
-                <input type="text" className="form-input" value={topic} onChange={(e) => setTopic(e.target.value)} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '18px', alignItems: 'start' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Topic</label>
+            <input
+              type="text"
+              className="form-input"
+              value={topic}
+              placeholder="e.g. Integration, Thermodynamics…"
+              onChange={(e) => setTopic(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Questions</label>
+            <div className="stepper">
+              <button type="button" onClick={() => adjustQ(-1)} aria-label="Fewer questions">−</button>
+              <input
+                type="number"
+                className="form-input"
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(Math.min(20, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                min="1" max="20"
+                style={{ width: '70px' }}
+              />
+              <button type="button" onClick={() => adjustQ(1)} aria-label="More questions">+</button>
             </div>
-            <div className="form-group">
-                <label className="form-label">#️⃣ Questions</label>
-                <input type="number" className="form-input" value={numQuestions} onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value, 10)) || 1)} min="1" max="20" />
-            </div>
+          </div>
         </div>
-        <button onClick={handleStart} className="btn btn-primary btn-full">🚀 Start Learning</button>
+
+        <button onClick={handleStart} className="btn btn-primary btn-full" style={{ marginTop: '22px' }}>
+          Start learning →
+        </button>
       </div>
+
+      <AnalyticsPanel analytics={analytics} />
 
       <div className="card">
-        <h2>Past Sessions</h2>
-        {loading ? <p>Loading history...</p> : (
-          history.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {history.map((item, index) => (
-                <li key={item.session_id} onClick={() => onViewHistory(item)} style={{ padding: '15px', borderBottom: '1px solid #eee', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong style={{ color: '#667eea' }}>{item.course}: {item.topic}</strong>
-                    <div style={{ fontSize: '0.9em', color: '#666' }}>{formatDate(item.completed_at)}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontWeight: 'bold' }}>Score: {Math.round(item.progress.score)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : <p>You have no completed sessions yet.</p>
+        <div className="section-title"><span className="bar" /> Past sessions</div>
+        {loading ? (
+          <p className="empty-state">Loading your history…</p>
+        ) : history.length > 0 ? (
+          history.map((item) => {
+            const pct = marksFor(item);
+            return (
+              <div key={item.session_id} className="session-row" onClick={() => onViewHistory(item)}>
+                <div className="session-meta">
+                  <strong>{item.course} · {item.topic}</strong>
+                  <div className="session-date">{formatDate(item.completed_at)}</div>
+                </div>
+                <span className="score-pill" style={{ background: pillColor(pct) + '22', color: pillColor(pct) }}>
+                  {pct}%
+                </span>
+              </div>
+            );
+          })
+        ) : (
+          <p className="empty-state">No sessions yet — start one above to see your progress here.</p>
         )}
       </div>
     </div>

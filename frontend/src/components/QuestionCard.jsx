@@ -1,8 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Latex from "react-latex-next";
+import { getHint } from "../api";
 
 export default function QuestionCard({ question, onAnswer, selectedAnswer, correctAnswerIndex, isAnswered }) {
+  const [hint, setHint] = useState("");
+  const [hintLoading, setHintLoading] = useState(false);
+
+  // Clear the hint whenever a new question appears.
+  useEffect(() => {
+    setHint("");
+    setHintLoading(false);
+  }, [question?.id]);
+
   if (!question) return null;
+
+  const handleHint = async () => {
+    setHintLoading(true);
+    try {
+      const text = await getHint(question.text, question.options);
+      setHint(text);
+    } catch (err) {
+      console.error("Failed to get hint:", err);
+      setHint("Couldn't load a hint right now — try reasoning through the options.");
+    }
+    setHintLoading(false);
+  };
 
   const getOptionClass = (idx) => {
     if (!isAnswered) {
@@ -79,6 +101,21 @@ export default function QuestionCard({ question, onAnswer, selectedAnswer, corre
           </button>
         ))}
       </div>
+
+      {!isAnswered && (
+        <div style={{ marginTop: '22px' }}>
+          {!hint && (
+            <button className="btn-hint" onClick={handleHint} disabled={hintLoading}>
+              💡 {hintLoading ? 'Thinking…' : 'Need a hint?'}
+            </button>
+          )}
+          {hint && (
+            <div className="hint-box">
+              <strong>💡 Hint:</strong> <Latex>{hint}</Latex>
+            </div>
+          )}
+        </div>
+      )}
 
       {isAnswered && (
         <div style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>

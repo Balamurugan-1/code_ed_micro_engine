@@ -3,6 +3,7 @@ import LoginPage from "./components/LoginPage";
 import DashboardPage from "./components/DashboardPage";
 import QuizPage from "./components/QuizPage";
 import HistoryDetail from "./components/HistoryDetail";
+import { setAuthToken } from "./api";
 import "./index.css";
 
 // A simple router
@@ -11,23 +12,29 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    // Check if user is logged in from a previous session
+    // Restore a logged-in session (user + JWT) from a previous visit.
     const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
+    const storedToken = localStorage.getItem('token');
+    if (storedUser && storedToken) {
+      setAuthToken(storedToken);
       setCurrentUser(storedUser);
       setRoute({ name: 'dashboard' });
     }
   }, []);
 
-  const handleLogin = (userId) => {
+  const handleLogin = (userId, token) => {
     setCurrentUser(userId);
     localStorage.setItem('currentUser', userId);
+    localStorage.setItem('token', token);
+    setAuthToken(token);
     setRoute({ name: 'dashboard' });
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
+    setAuthToken(null);
     setRoute({ name: 'login' });
   };
 

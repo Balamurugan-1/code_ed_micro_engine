@@ -27,6 +27,20 @@ class AnswerRequest(BaseModel):
     answer_index: int
     time_taken: float
 
+class ExplainRequest(BaseModel):
+    question_text: str
+    correct_answer: str
+
+class HintRequest(BaseModel):
+    question_text: str
+    options: List[str]
+
+class CoachRequest(BaseModel):
+    course: str
+    topic: str
+    score: float = 0
+    question_history: List[Dict] = []
+
 class Question(BaseModel):
     id: str
     text: str

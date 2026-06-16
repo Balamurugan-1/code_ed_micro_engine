@@ -1,8 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 python-dotenv
 google-generativeai
-passlib
-bcrypt
-requests
+passlib[bcrypt]
+bcrypt<4.1
+PyJWT
+psycopg2-binary
 pydantic

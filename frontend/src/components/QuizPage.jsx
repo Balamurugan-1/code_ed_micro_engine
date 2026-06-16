@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import QuestionCard from "./QuestionCard";
 import ContentCard from "./ContentCard";
 import ResultPage from "./ResultPage";
-import { startQuiz, submitAnswer } from "../api";
+import { startQuiz, submitAnswer, finishQuiz } from "../api";
 
 export default function QuizPage({ userId, course, topic, numQuestions, onExit }) {
   const [sessionId, setSessionId] = useState(null);
@@ -17,9 +17,26 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState(null);
   const [explanation, setExplanation] = useState("");
+  const [elapsed, setElapsed] = useState(0);
 
 
   const initialized = useRef(false);
+  // Timestamp of when the current question was first shown, used to measure
+  // how long the learner took to answer.
+  const questionShownAt = useRef(Date.now());
+
+  // Reset the timer every time a new question is rendered, and tick a live
+  // counter once per second while the learner is thinking. The counter
+  // freezes once they answer so the final time stays visible.
+  useEffect(() => {
+    if (!question || isAnswered) return;
+    questionShownAt.current = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, [question, isAnswered]);
+
+  const formatTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
   useEffect(() => {
 
@@ -47,13 +64,13 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
   async function handleAnswer(idx) {
     setIsAnswered(true);
     setSelectedAnswer(idx);
-    
-    const startTime = Date.now();
+
+    const timeTaken = (Date.now() - questionShownAt.current) / 1000;
     try {
       const data = await submitAnswer(
         sessionId,
         idx,
-        (Date.now() - startTime) / 1000,
+        timeTaken,
         question.id
       );
 
@@ -90,6 +107,19 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
   }
 
  
+  async function handleEndQuiz() {
+    // Persist whatever progress exists so it shows up in history, then
+    // show the results screen.
+    if (sessionId) {
+      try {
+        await finishQuiz(sessionId);
+      } catch (err) {
+        console.error("Failed to finish quiz:", err);
+      }
+    }
+    setCompleted(true);
+  }
+
   function handleProceedFromContent() {
     setQuestion(learningContent.next_question);
     setLearningContent(null);
@@ -116,43 +146,26 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
   }
 
   if (completed) {
-    return <ResultPage progress={progress} questionHistory={progress.question_history} onRestart={onExit} />;
+    return <ResultPage progress={progress} questionHistory={progress.question_history} course={course} topic={topic} onRestart={onExit} />;
   }
+
+  // Running marks (percentage) derived from answers so far.
+  const answeredQs = progress?.question_history || [];
+  const answeredCount = answeredQs.length;
+  const correctCount = answeredQs.filter((q) => q.is_correct).length;
+  const runningPct = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
 
   return (
     <div className="quiz-container">
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '30px',
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        padding: '15px 20px',
-        borderRadius: '15px',
-        border: '1px solid rgba(255, 255, 255, 0.2)'
-      }}>
-        <button
-          onClick={onExit}
-          className="btn btn-secondary"
-          style={{ 
-            background: 'rgba(255, 255, 255, 0.2)',
-            border: 'none',
-            color: 'white',
-            padding: '10px 20px'
-          }}
-        >
-          ← Back to Setup
+      <div className="quiz-topbar">
+        <button onClick={onExit} className="btn btn-ghost" style={{ padding: '10px 18px', minHeight: 'auto' }}>
+          ← Back
         </button>
-        <div style={{ 
-          background: 'rgba(78, 205, 196, 0.2)',
-          color: 'white',
-          padding: '8px 16px',
-          borderRadius: '20px',
-          fontSize: '0.9rem',
-          fontWeight: '600'
-        }}>
-          📚 {topic}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className={`quiz-timer ${!isAnswered && question ? 'is-running' : ''}`}>
+            ⏱ {formatTime(elapsed)}
+          </div>
+          <div className="quiz-topic-chip">{topic}</div>
         </div>
       </div>
 
@@ -197,17 +210,17 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
           <div className="progress-header" style={{ justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Your Progress</h3>
             <div className="progress-score">
-              {Math.round(progress.score)}
+              {runningPct}<span style={{ fontSize: '1.4rem' }}>%</span>
             </div>
           </div>
-          
+
           <div className="progress-stats">
             <div className="stat-item">
               <div className="stat-value">{progress.answered} / {numQuestions}</div>
               <div className="stat-label">Questions</div>
             </div>
             <div className="stat-item">
-              <div className={`stat-value`} style={{ 
+              <div className={`stat-value`} style={{
                 background: 'rgba(255, 255, 255, 0.2)',
                 padding: '8px 12px',
                 borderRadius: '20px',
@@ -219,8 +232,8 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
               <div className="stat-label">Level</div>
             </div>
             <div className="stat-item">
-              <div className="stat-value">{numQuestions - progress.answered}</div>
-              <div className="stat-label">Remaining</div>
+              <div className="stat-value">⏱ {formatTime(elapsed)}</div>
+              <div className="stat-label">This question</div>
             </div>
           </div>
 
@@ -235,12 +248,8 @@ export default function QuizPage({ userId, course, topic, numQuestions, onExit }
 
 
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
-        <button
-          onClick={() => setCompleted(true)}
-          className="btn btn-secondary"
-          style={{ background: '#6c757d' }}
-        >
-          End Quiz & Show Results
+        <button onClick={handleEndQuiz} className="btn btn-ghost">
+          End quiz &amp; show results
         </button>
       </div>
     </div>
