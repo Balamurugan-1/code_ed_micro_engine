@@ -10,6 +10,7 @@ e.g. the value Neon gives you:
 """
 import os
 import logging
+import threading
 from contextlib import contextmanager
 
 import psycopg2
@@ -35,18 +36,33 @@ if "sslmode=" not in DATABASE_URL:
     sep = "&" if "?" in DATABASE_URL else "?"
     DATABASE_URL = f"{DATABASE_URL}{sep}sslmode=require"
 
-# A small connection pool keeps latency low without exhausting Neon's limits.
-_pool = pool.SimpleConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
+# A thread-safe pool keeps latency low without exhausting Neon's limits.
+# It is created lazily on first use so the connections are opened *inside* the
+# worker process (after gunicorn forks), never shared across a fork — sharing a
+# libpq/SSL connection across processes causes "decryption failed or bad record
+# mac" errors.
+_pool = None
+_pool_lock = threading.Lock()
+
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                _pool = pool.ThreadedConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
+    return _pool
 
 
 @contextmanager
 def get_connection():
     """Borrow a connection from the pool and return it when done."""
-    conn = _pool.getconn()
+    p = _get_pool()
+    conn = p.getconn()
     try:
         yield conn
     finally:
-        _pool.putconn(conn)
+        p.putconn(conn)
 
 
 def initialize_db():
