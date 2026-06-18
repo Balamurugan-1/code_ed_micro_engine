@@ -9,12 +9,11 @@ e.g. the value Neon gives you:
     postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
 """
 import os
+import time
 import logging
-import threading
 from contextlib import contextmanager
 
 import psycopg2
-from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
@@ -36,33 +35,37 @@ if "sslmode=" not in DATABASE_URL:
     sep = "&" if "?" in DATABASE_URL else "?"
     DATABASE_URL = f"{DATABASE_URL}{sep}sslmode=require"
 
-# A thread-safe pool keeps latency low without exhausting Neon's limits.
-# It is created lazily on first use so the connections are opened *inside* the
-# worker process (after gunicorn forks), never shared across a fork — sharing a
-# libpq/SSL connection across processes causes "decryption failed or bad record
-# mac" errors.
-_pool = None
-_pool_lock = threading.Lock()
+# Neon is serverless: its compute auto-suspends and drops idle connections, so a
+# long-lived pool ends up handing out dead sockets ("SSL connection has been
+# closed unexpectedly"). The DATABASE_URL points at Neon's PgBouncer "-pooler"
+# endpoint, which is built for many short-lived connections — so we open a fresh
+# connection per request and close it afterwards. A small retry covers the few
+# seconds Neon needs to wake from a cold start.
+_CONNECT_RETRIES = 3
+_CONNECT_BACKOFF = 1.5  # seconds
 
 
-def _get_pool():
-    global _pool
-    if _pool is None:
-        with _pool_lock:
-            if _pool is None:
-                _pool = pool.ThreadedConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
-    return _pool
+def _connect():
+    last_error = None
+    for attempt in range(_CONNECT_RETRIES):
+        try:
+            return psycopg2.connect(DATABASE_URL, connect_timeout=10)
+        except psycopg2.OperationalError as e:
+            last_error = e
+            logger.warning("DB connect attempt %d failed: %s", attempt + 1, e)
+            if attempt < _CONNECT_RETRIES - 1:
+                time.sleep(_CONNECT_BACKOFF)
+    raise last_error
 
 
 @contextmanager
 def get_connection():
-    """Borrow a connection from the pool and return it when done."""
-    p = _get_pool()
-    conn = p.getconn()
+    """Open a fresh connection for the caller and close it when done."""
+    conn = _connect()
     try:
         yield conn
     finally:
-        p.putconn(conn)
+        conn.close()
 
 
 def initialize_db():
