@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL is not set. Add your Neon connection string to the "
+        "DATABASE_URL is not set. Add the Neon connection string to the "
         "environment (see backend/.env.example)."
     )
 
